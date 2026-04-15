@@ -108,6 +108,9 @@ export async function POST(req: NextRequest) {
       }));
     }).catch(() => {});
 
+    // Push to OpenMetadata (async, non-blocking)
+    import("@/lib/openmetadata/om-datasource").then(({ pushDatasource }) => pushDatasource(item as any)).catch(() => {});
+
     return apiOk({
       ...item,
       provisionedResources: {

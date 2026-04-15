@@ -64,6 +64,9 @@ export async function POST(_: NextRequest, { params }: { params: { id: string } 
       }
     } catch {}
 
+    // Push to OpenMetadata (async, non-blocking)
+    import("@/lib/openmetadata/om-workflow").then(({ pushWorkflowPipeline }) => pushWorkflowPipeline(updatedWf)).catch(() => {});
+
     return NextResponse.json({ success: true, dagId, bucket });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

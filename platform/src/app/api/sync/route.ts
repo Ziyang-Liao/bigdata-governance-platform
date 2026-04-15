@@ -62,6 +62,9 @@ export async function POST(req: NextRequest) {
       if (ds) generateSyncLineage(item, ds).catch(() => {});
     }
 
+    // Push to OpenMetadata (async, non-blocking)
+    import("@/lib/openmetadata/om-sync").then(({ pushSyncPipeline }) => pushSyncPipeline(item)).catch(() => {});
+
     return apiOk(item, 201);
   } catch (e: any) {
     return apiError(e.message, 500);

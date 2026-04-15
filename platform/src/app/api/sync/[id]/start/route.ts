@@ -247,6 +247,35 @@ async function pollGlueJob(taskId: string, runId: string, jobName: string, jobRu
           ExpressionAttributeValues: { ":s": status === "succeeded" ? "stopped" : "error", ":now": now },
         }));
 
+        // Push lineage to OpenMetadata on success
+        if (status === "succeeded") {
+          try {
+            const { GetCommand: GC } = await import("@aws-sdk/lib-dynamodb");
+            const { Item: syncTask } = await docClient.send(new GC({ TableName: TABLES.SYNC_TASKS, Key: { userId: USER_ID, taskId } }));
+            const { Item: dsItem } = await docClient.send(new GC({ TableName: TABLES.DATASOURCES, Key: { userId: USER_ID, datasourceId: syncTask?.datasourceId } }));
+            if (syncTask && dsItem) {
+              const { pushLineage, ensureRedshiftService } = await import("@/lib/openmetadata/om-sync");
+              const { getTableFqn, pushTables } = await import("@/lib/openmetadata/om-datasource");
+              const tables = syncTask.sourceTables || [];
+              const fieldMappings: Record<string, { source: string; target: string }[]> = {};
+              for (const t of tables) {
+                const fm = syncTask.fieldMappings?.[t];
+                if (fm) fieldMappings[t] = fm.map((f: any) => ({ source: f.source, target: f.target }));
+              }
+              if (syncTask.targetType === "redshift" || syncTask.targetType === "both") {
+                const rs = syncTask.redshiftConfig || {};
+                await ensureRedshiftService(rs.workgroupName || "bgp-workgroup", rs.database || "dev", rs.schema || "public");
+                const rsFqnPrefix = `bgp-redshift-dev.${rs.database || "dev"}.${rs.schema || "public"}`;
+                // Ensure target tables exist in OM
+                await pushTables({ ...dsItem, type: "redshift", datasourceId: "redshift-dev", host: "redshift", port: 5439, database: rs.database || "dev" } as any,
+                  tables.map((t: string) => ({ name: t, columns: syncTask.fieldMappings?.[t]?.map((f: any) => ({ name: f.target, type: f.targetType })) || [] })));
+                const srcFqnPrefix = `bgp-${dsItem.type}-${dsItem.datasourceId.slice(-5)}.${dsItem.database}.${dsItem.type === "mysql" ? "default" : "public"}`;
+                await pushLineage(srcFqnPrefix, rsFqnPrefix, tables, fieldMappings, `bgp-sync.${syncTask.name || syncTask.taskId}`);
+              }
+            }
+          } catch {}
+        }
+
         return;
       }
     } catch {}

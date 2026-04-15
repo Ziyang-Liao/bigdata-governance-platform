@@ -56,7 +56,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       });
     }
 
-    return NextResponse.json(Object.values(tableMap));
+    const tables = Object.values(tableMap);
+
+    // Push to OpenMetadata (async, non-blocking)
+    import("@/lib/openmetadata/om-datasource").then(({ pushTables }) => pushTables(ds as any, tables as any)).catch(() => {});
+
+    return NextResponse.json(tables);
   } catch (e: any) {
     return NextResponse.json({ error: `无法连接源数据库: ${e.message}` }, { status: 500 });
   }
