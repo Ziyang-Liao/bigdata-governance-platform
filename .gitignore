@@ -31,3 +31,5 @@ npm-debug.log*
 # Test
 coverage/
 e2e/screenshots/
+platform/src/app/api/debug/init-db/
+platform/src/app/api/debug/exec-sql/

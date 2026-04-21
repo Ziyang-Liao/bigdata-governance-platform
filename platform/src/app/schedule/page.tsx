@@ -27,6 +27,15 @@ export default function SchedulePage() {
     const data = await res.json();
     setLogModal({ open: true, id, logs: data.logs || [] });
   };
+  const [mwaaUrl, setMwaaUrl] = useState("");
+  const [mwaaLoginUrl, setMwaaLoginUrl] = useState("");
+  useEffect(() => {
+    fetch("/api/workflow/airflow").then(r => r.json()).then(d => {
+      const data = d.data || d;
+      if (data.loginUrl) setMwaaLoginUrl(data.loginUrl);
+      if (data.webServerHostname) setMwaaUrl(`https://${data.webServerHostname}`);
+    }).catch(() => {});
+  }, []);
   const [refreshInterval, setRefreshInterval] = useState(0);
   const timerRef = useRef<NodeJS.Timeout>(undefined);
   const [filters, setFilters] = useState({ name: "", itemType: "", status: "", enabled: "", scheduleType: "" });
@@ -130,6 +139,7 @@ export default function SchedulePage() {
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
         <h2 style={{ margin: 0 }}><ClockCircleOutlined /> 调度管理</h2>
         <Space>
+          {mwaaLoginUrl && <Button type="link" href={mwaaLoginUrl} target="_blank">🔗 Airflow Web UI</Button>}
           <Select value={refreshInterval} onChange={setRefreshInterval} style={{ width: 130 }} options={[
             { label: "手动刷新", value: 0 }, { label: "5秒自动", value: 5 }, { label: "10秒自动", value: 10 }, { label: "30秒自动", value: 30 },
           ]} />
