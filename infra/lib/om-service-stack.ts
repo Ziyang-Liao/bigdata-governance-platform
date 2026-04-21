@@ -23,7 +23,7 @@ export class OmServiceStack extends cdk.Stack {
     const omSg = new ec2.SecurityGroup(this, "OmSg", { vpc, description: "OpenMetadata Service" });
     omSg.addIngressRule(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(80));
 
-    const cluster = ecs.Cluster.fromClusterAttributes(this, "Cluster", { clusterName: "bgp-cluster", vpc, securityGroups: [] });
+    const cluster = new ecs.Cluster(this, "OmCluster", { vpc, clusterName: "bgp-om-cluster" });
 
     const taskDef = new ecs.FargateTaskDefinition(this, "OmTaskDef", { cpu: 2048, memoryLimitMiB: 4096 });
     taskDef.executionRole?.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonEC2ContainerRegistryReadOnly"));
