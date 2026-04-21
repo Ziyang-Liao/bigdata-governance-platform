@@ -1,9 +1,7 @@
 import * as cdk from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
-import * as ecr from "aws-cdk-lib/aws-ecr";
 import * as rds from "aws-cdk-lib/aws-rds";
-import * as opensearch from "aws-cdk-lib/aws-opensearchservice";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as logs from "aws-cdk-lib/aws-logs";
@@ -31,9 +29,7 @@ export class OmServiceStack extends cdk.Stack {
     taskDef.executionRole?.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonEC2ContainerRegistryReadOnly"));
 
     taskDef.addContainer("openmetadata", {
-      image: ecs.ContainerImage.fromEcrRepository(
-        ecr.Repository.fromRepositoryName(this, "OmEcr", "openmetadata-server"), "1.12.4"
-      ),
+      image: ecs.ContainerImage.fromRegistry("docker.getcollate.io/openmetadata/server:1.6.1"),
       portMappings: [{ containerPort: 8585 }],
       environment: {
         OPENMETADATA_CLUSTER_NAME: "bgp-openmetadata",

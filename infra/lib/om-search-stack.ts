@@ -13,6 +13,9 @@ export class OmSearchStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
 
+    // Ensure OpenSearch service-linked role exists (required for VPC deployment)
+    const slr = new iam.CfnServiceLinkedRole(this, "OsSlr", { awsServiceName: "es.amazonaws.com" });
+
     this.esSg = new ec2.SecurityGroup(this, "OmEsSg", { vpc: props.vpc, description: "OpenMetadata ES" });
     this.esSg.addIngressRule(ec2.Peer.ipv4(props.vpc.vpcCidrBlock), ec2.Port.tcp(443));
 
@@ -27,6 +30,7 @@ export class OmSearchStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       accessPolicies: [new iam.PolicyStatement({ actions: ["es:*"], principals: [new iam.AnyPrincipal()], resources: ["*"] })],
     });
+    this.domain.node.addDependency(slr);
 
     new cdk.CfnOutput(this, "SearchEndpoint", { value: this.domain.domainEndpoint });
   }
