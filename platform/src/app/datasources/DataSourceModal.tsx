@@ -73,6 +73,8 @@ export default function DataSourceModal({ open, editing, onClose, onSuccess }: P
       type: engineMap[instance.engine] || instance.engine,
       database: instance.database || "",
       rdsSecretArn: instance.masterUserSecretArn || "",
+      username: "",
+      password: "",
     });
   };
 
@@ -151,15 +153,20 @@ export default function DataSourceModal({ open, editing, onClose, onSuccess }: P
             <Form.Item name="database" label="数据库名" rules={[{ required: true }]}>
               <Input placeholder="ecommerce" />
             </Form.Item>
-            <Space size={12}>
-              <Form.Item name="username" label="用户名" rules={[{ required: true }]} style={{ marginBottom: 0, width: 240 }}>
-                <Input />
-              </Form.Item>
-              <Form.Item name="password" label="密码" rules={[{ required: !isEdit }]} style={{ marginBottom: 0, width: 240 }}>
-                <Input.Password placeholder={isEdit ? "不修改请留空" : ""} />
-              </Form.Item>
-            </Space>
+            {connectMode === "rds" && form.getFieldValue("rdsSecretArn") ? (
+              <Alert type="info" message="凭证将自动从 RDS Secrets Manager 读取，无需手动输入" showIcon />
+            ) : (
+              <Space size={12}>
+                <Form.Item name="username" label="用户名" rules={[{ required: connectMode === "manual" }]} style={{ marginBottom: 0, width: 240 }}>
+                  <Input />
+                </Form.Item>
+                <Form.Item name="password" label="密码" rules={[{ required: connectMode === "manual" && !isEdit }]} style={{ marginBottom: 0, width: 240 }}>
+                  <Input.Password placeholder={isEdit ? "不修改请留空" : ""} />
+                </Form.Item>
+              </Space>
+            )}
           </Space>
+          <Form.Item name="rdsSecretArn" hidden><Input /></Form.Item>
 
           {testResult && (
             <Alert type={testResult.success ? "success" : "error"} style={{ marginTop: 16 }}
