@@ -16,6 +16,8 @@ interface Props extends cdk.StackProps {
 }
 
 export class OmServiceStack extends cdk.Stack {
+  public readonly albDnsName: string;
+
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
 
@@ -57,14 +59,10 @@ export class OmServiceStack extends cdk.Stack {
       },
       command: ["-c", "./bootstrap/openmetadata-ops.sh migrate && /openmetadata-start.sh"],
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: "openmetadata", logRetention: logs.RetentionDays.ONE_WEEK }),
-      healthCheck: {
-        command: ["CMD-SHELL", "curl -f http://localhost:8585/api/v1/system/version || exit 1"],
-        interval: cdk.Duration.seconds(30), timeout: cdk.Duration.seconds(10),
-        retries: 10, startPeriod: cdk.Duration.seconds(300),
-      },
     });
 
     const alb = new elbv2.ApplicationLoadBalancer(this, "OmAlb", { vpc, internetFacing: true, securityGroup: omSg });
+    this.albDnsName = alb.loadBalancerDnsName;
     const listener = alb.addListener("OmListener", { port: 80 });
 
     const service = new ecs.FargateService(this, "OmService", {

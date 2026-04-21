@@ -43,18 +43,31 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { name, type, host, port, database, username, password, env, tags } = body;
+  const { name, type, host, port, database, username, password, env, tags, rdsSecretArn } = body;
 
-  if (!name || !type || !host || !port || !database || !username || !password) {
-    return apiError("缺少必填字段: name, type, host, port, database, username, password");
+  // When rdsSecretArn is provided, password is optional (read from RDS secret)
+  if (!name || !type || !host || !port || !database) {
+    return apiError("缺少必填字段: name, type, host, port, database");
+  }
+  if (!rdsSecretArn && (!username || !password)) {
+    return apiError("缺少必填字段: username, password (或提供 rdsSecretArn)");
   }
 
   const datasourceId = ulid();
   const now = new Date().toISOString();
 
   try {
-    // Step 1: DS-04 — Store password in Secrets Manager
-    const secretArn = await createSecret(datasourceId, username, password);
+    // Resolve credentials: use RDS secret or user-provided password
+    let resolvedUsername = username || "admin";
+    let secretArn: string;
+    if (rdsSecretArn) {
+      const { getSecret } = await import("@/lib/aws/datasource-service");
+      const rdsSecret = await getSecret(rdsSecretArn);
+      resolvedUsername = rdsSecret.username;
+      secretArn = await createSecret(datasourceId, rdsSecret.username, rdsSecret.password);
+    } else {
+      secretArn = await createSecret(datasourceId, username, password);
+    }
 
     // Step 2: DS-02 — Ensure Glue IAM Role exists
     await ensureGlueRole();
@@ -74,7 +87,7 @@ export async function POST(req: NextRequest) {
       host,
       port,
       database,
-      username,
+      username: resolvedUsername,
       status: "testing" as const,
       env: env || "",
       tags: tags || [],

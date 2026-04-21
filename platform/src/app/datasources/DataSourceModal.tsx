@@ -71,6 +71,8 @@ export default function DataSourceModal({ open, editing, onClose, onSuccess }: P
       host: instance.endpoint,
       port: instance.port,
       type: engineMap[instance.engine] || instance.engine,
+      database: instance.database || "",
+      rdsSecretArn: instance.masterUserSecretArn || "",
     });
   };
 

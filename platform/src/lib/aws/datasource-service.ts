@@ -261,8 +261,10 @@ export async function discoverRdsInstances() {
     instanceClass: i.DBInstanceClass,
     endpoint: i.Endpoint?.Address,
     port: i.Endpoint?.Port,
+    database: i.DBName || "",
     status: i.DBInstanceStatus,
     vpcId: i.DBSubnetGroup?.VpcId,
     isPublic: i.PubliclyAccessible,
+    masterUserSecretArn: i.MasterUserSecret?.SecretArn || "",
   }));
 }

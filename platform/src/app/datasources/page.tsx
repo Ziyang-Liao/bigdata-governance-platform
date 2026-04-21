@@ -43,9 +43,19 @@ export default function DatasourcesPage() {
 
   const browseMeta = async (ds: DataSource) => {
     setMetaDrawer({ open: true, ds, tables: [] });
-    const res = await fetch(`/api/datasources/${ds.datasourceId}/tables?database=${ds.database}`);
-    const tables = await res.json();
-    setMetaDrawer({ open: true, ds, tables });
+    try {
+      const res = await fetch(`/api/datasources/${ds.datasourceId}/tables?database=${ds.database}`);
+      const json = await res.json();
+      if (json.error) {
+        message.error(json.error);
+        setMetaDrawer({ open: true, ds, tables: [] });
+      } else {
+        setMetaDrawer({ open: true, ds, tables: Array.isArray(json) ? json : [] });
+      }
+    } catch (e: any) {
+      message.error("获取表列表失败");
+      setMetaDrawer({ open: true, ds, tables: [] });
+    }
   };
 
   const columns = [
