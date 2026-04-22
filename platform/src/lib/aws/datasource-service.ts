@@ -254,17 +254,35 @@ export async function testConnection(connName: string): Promise<TestResult> {
 
 export async function discoverRdsInstances() {
   const { DBInstances = [] } = await rds.send(new DescribeDBInstancesCommand({}));
-  return DBInstances.filter((i) => i.DBInstanceStatus === "available").map((i) => ({
-    identifier: i.DBInstanceIdentifier,
-    engine: i.Engine,
-    engineVersion: i.EngineVersion,
-    instanceClass: i.DBInstanceClass,
-    endpoint: i.Endpoint?.Address,
-    port: i.Endpoint?.Port,
-    database: i.DBName || "",
-    status: i.DBInstanceStatus,
-    vpcId: i.DBSubnetGroup?.VpcId,
-    isPublic: i.PubliclyAccessible,
-    masterUserSecretArn: i.MasterUserSecret?.SecretArn || "",
-  }));
+  const { ListSecretsCommand } = await import("@aws-sdk/client-secrets-manager");
+  const { SecretList = [] } = await sm.send(new ListSecretsCommand({}));
+
+  return DBInstances.filter((i) => i.DBInstanceStatus === "available").map((i) => {
+    // Try MasterUserSecret first, then find CDK-generated secret by instance identifier
+    let secretArn = i.MasterUserSecret?.SecretArn || "";
+    if (!secretArn && i.DBInstanceIdentifier) {
+      const match = SecretList.find((s) => s.Name && s.Description?.includes(i.DBInstanceIdentifier!));
+      if (!match) {
+        // CDK names secrets like "BgpRdsStackBgpSourceMysqlSe-XXXX"
+        const normalized = i.DBInstanceIdentifier.replace(/-/g, "");
+        const match2 = SecretList.find((s) => s.Name?.toLowerCase().includes(normalized.toLowerCase()));
+        if (match2) secretArn = match2.ARN || "";
+      } else {
+        secretArn = match.ARN || "";
+      }
+    }
+    return {
+      identifier: i.DBInstanceIdentifier,
+      engine: i.Engine,
+      engineVersion: i.EngineVersion,
+      instanceClass: i.DBInstanceClass,
+      endpoint: i.Endpoint?.Address,
+      port: i.Endpoint?.Port,
+      database: i.DBName || "",
+      status: i.DBInstanceStatus,
+      vpcId: i.DBSubnetGroup?.VpcId,
+      isPublic: i.PubliclyAccessible,
+      masterUserSecretArn: secretArn,
+    };
+  });
 }
